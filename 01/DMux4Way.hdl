@@ -17,6 +17,7 @@ CHIP DMux4Way {
 
     PARTS:
     // Put your code here:
+    // Calaborated with Joe St'Angelo, & Yong Bakos
 
     Not(in=sel[1], out=notsel1);
 

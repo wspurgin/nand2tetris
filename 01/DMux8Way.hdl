@@ -18,6 +18,7 @@ CHIP DMux8Way {
 
     PARTS:
     // Put your code here:
+    // Calaborated with Joe St'Angelo, & Yong Bakos
 
     DMux(in=in, sel=sel[2], a=dmux1, b=dmux2);
     DMux4Way(in=dmux1, sel[0]=sel[0], sel[1]=sel[1], a=a, b=b, c=c, d=d);
