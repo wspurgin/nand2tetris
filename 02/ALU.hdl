@@ -46,4 +46,55 @@ CHIP ALU {
 
     PARTS:
    // Put you code here:
+
+   // handle zx
+   Not(in=zx, out=nzx);
+   And16(a[0]=nzx, a[1]=nzx, a[2]=nzx, a[3]=nzx, a[4]=nzx, a[5]=nzx, a[6]=nzx,
+   a[7]=nzx, a[8]=nzx, a[9]=nzx, a[10]=nzx, a[11]=nzx, a[12]=nzx, a[13]=nzx,
+   a[14]=nzx, a[15]=nzx, b=x, out=x0);
+
+   // handle nx
+   Xor16(a=x0, b[0]=nx, b[1]=nx, b[2]=nx, b[3]=nx, b[4]=nx, b[5]=nx, b[6]=nx,
+   b[7]=nx, b[8]=nx, b[9]=nx, b[10]=nx, b[11]=nx, b[12]=nx, b[13]=nx, b[14]=nx,
+   b[15]=nx, out=x1);
+
+   // handle zy
+   Not(in=zy, out=nzy);
+   And16(a[0]=nzy, a[1]=nzy, a[2]=nzy, a[3]=nzy, a[4]=nzy, a[5]=nzy, a[6]=nzy,
+   a[7]=nzy, a[8]=nzy, a[9]=nzy, a[10]=nzy, a[11]=nzy, a[12]=nzy, a[13]=nzy,
+   a[14]=nzy, a[15]=nzy, b=y, out=y0);
+
+   // handle ny
+   Xor16(a=y0, b[0]=ny, b[1]=ny, b[2]=ny, b[3]=ny, b[4]=ny, b[5]=ny, b[6]=ny,
+   b[7]=ny, b[8]=ny, b[9]=ny, b[10]=ny, b[11]=ny, b[12]=ny, b[13]=ny, b[14]=ny,
+   b[15]=ny, out=y1);
+
+   // handle operations
+
+   Add16(a=x1, b=y1, out=sum);
+   And16(a[0]=f, a[1]=f, a[2]=f, a[3]=f, a[4]=f, a[5]=f, a[6]=f,
+   a[7]=f, a[8]=f, a[9]=f, a[10]=f, a[11]=f, a[12]=f, a[13]=f,
+   a[14]=f, a[15]=f, b=sum, out=out0);
+
+   And16(a=x1, b=y1, out=anded);
+   Not(in=f, out=nf);
+
+   And16(a[0]=nf, a[1]=nf, a[2]=nf, a[3]=nf, a[4]=nf, a[5]=nf, a[6]=nf,
+   a[7]=nf, a[8]=nf, a[9]=nf, a[10]=nf, a[11]=nf, a[12]=nf, a[13]=nf,
+   a[14]=nf, a[15]=nf, b=anded, out=out1);
+
+   Or16(a=out0, b=out1, out=out2);
+
+
+   // Will also handle ng
+   Xor16(a=out2, b[0]=no, b[1]=no, b[2]=no, b[3]=no, b[4]=no, b[5]=no, b[6]=no,
+   b[7]=no, b[8]=no, b[9]=no, b[10]=no, b[11]=no, b[12]=no, b[13]=no, b[14]=no,
+   b[15]=no, out[15]=ng, out=out, out=output);
+
+
+   // set zr, effectively a Nor16way
+   Or16Way(in=output, out=nzr);
+   Not(in=nzr, out=zr);
+
+   
 }
