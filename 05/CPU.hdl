@@ -25,6 +25,11 @@
  * than to the address resulting from executing the current instruction. 
  */
 
+
+/**
+*   Conceptual Collaboration with Joe St'Angelo
+*/
+
 CHIP CPU {
 
     IN  inM[16],         // M value input  (M = contents of RAM[A])
@@ -40,4 +45,34 @@ CHIP CPU {
 
     PARTS:
     // Put your code here:
+
+    And(a=instruction[15], b=instruction[5], out=selLastA);
+    Mux16(a=instruction, b=loop, sel=selLastA, out=inA);
+    Not(in=instruction[15], out=Ainst);
+    Or(a=Ainst, b=instruction[5], out=loadA);
+    ARegister(in=inA, load=loadA, out=outA, out[0..14]=addressM);
+
+    Mux16(a=outA, b=inM, sel=instruction[12], out=AM);
+    
+    And(a=instruction[15], b=instruction[4], out=loadD);
+    DRegister(in=loop, load=loadD, out=D);
+
+    And(a=instruction[15], b=instruction[3], out=writeM);
+
+    ALU(x=D, y=AM, zx=instruction[11], nx=instruction[10], zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], zr=isZero, ng=isNeg, out=outM, out=loop);
+
+    And(a=isZero, b=instruction[1], out=jump0);
+    And(a=isNeg, b=instruction[2], out=jumpL0);
+    Not(in=isNeg, out=notNeg);
+    Not(in=isZero, out=notZero);
+    And(a=notNeg, b=instruction[0], out=jumpGE);
+    And(a=notZero, b=jumpGE, out=jumpG0);
+
+
+    Or(a=jump0, b=jumpL0, out=aljump);
+    Or(a=aljump, b=jumpG0, out=jump);
+
+    And(a=jump, b=instruction[15], out=loadPC);
+
+    PC(in=outA, load=loadPC, inc=true, reset=reset, out[0..14]=pc);
 }
