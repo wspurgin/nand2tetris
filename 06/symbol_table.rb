@@ -1,4 +1,4 @@
-class Symbol_Table
+class SymbolTable
 
   def initialize()
 
