@@ -1,19 +1,19 @@
 class SymbolTable
 
-  def initialize()
-
+  # Creates a new, empty symbol table
+  def initialize
   end
 
-  def addEntry(symbol, address)
-
+  # Adds the pairs (symbol, address) to the symbol table
+  def add_entry(symbol, address)
   end
 
-  def contains(symbol)
-
+  # Does the symbol table contain the given symbol?
+  def self.contains?(symbol)
   end
 
-  def get_address(symbol)
-
+  # Returns the addres associated with the symbol
+  def address_of(symbol)
   end
 
 end
