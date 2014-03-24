@@ -22,11 +22,26 @@ class Assembler
     @parser = Parser.new(@asm_file)
     @code = Code.new
     @symbol_table = SymbolTable.new
-
+    @num_labels = 0
   end
 
   def assemble!
-    assemble_command while @parser.has_more_commands?
+    begin
+      constantize_labels while @parser.has_more_commands?
+      @parser.rewind!
+      assemble_command while @parser.has_more_commands?
+    rescue Exception => e
+      puts e.backtrace.join("\n")
+      abort(e.message)
+    end
+  end
+
+  def constantize_labels
+    if @parser.command_type == Parser::L_COMMAND
+      @symbol_table.add_entry(@parser.symbol, @parser.index - @num_labels)
+      @num_labels += 1
+    end
+    @parser.advance
   end
 
   def assemble_command
@@ -34,14 +49,16 @@ class Assembler
       assemble_c_command
     elsif @parser.command_type == Parser::A_COMMAND
       assemble_a_command
-    elsif @parser.command_type == Parser::L_COMMAND
-        #do nothing
     end
     @parser.advance
   end
 
   def assemble_a_command
-    @hack_file << "0#{@code.constant(@parser.symbol)}\n"
+    constant = @parser.symbol
+    if constant[/\D/]
+      constant = @symbol_table.address_of(constant)
+    end
+    @hack_file << "0#{@code.constant(constant)}\n"
   end
 
   def assemble_c_command

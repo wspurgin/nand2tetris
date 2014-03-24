@@ -1,6 +1,3 @@
-
-
-
 class AssemblerParserException < Exception; end
 
 class Parser
@@ -10,6 +7,7 @@ class Parser
   L_COMMAND = 2
 
   attr_reader :command
+  attr_reader :index
 
   def initialize(input_file)
     @asm_file = input_file
@@ -28,6 +26,11 @@ class Parser
     @instructions[@index]
   end
 
+  def rewind!
+    @index = 0;
+    @command = @instructions[@index]
+  end
+
   # Reads the next command from the input and sets it as current command
   def advance
     raise AssemblerParserException.new('No more commands') unless has_more_commands?
@@ -38,7 +41,7 @@ class Parser
   # Returns the current command's type
   def command_type
     return A_COMMAND if @command[/^@.*/]
-    return L_COMMAND if @command[/^\(.*\)/]
+    return L_COMMAND if @command[/^\(.*\)$/]
     return C_COMMAND
   end
 
@@ -46,7 +49,10 @@ class Parser
   # Should be called only when command_type() is A_COMMAND or L_COMMAND.
   def symbol
     # Return the 1st captured match of the regex. See http://www.ruby-doc.org/core-2.1.0/String.html#method-i-5B-5D
-    return @command[/@(.*)/, 1]
+    @command.scan(/^\((.*)\)$|@(.*)/) { |x,y|
+      return x unless not x
+      return y        
+    }
   end
 
   # Returns the dest mnemonic in the current C-instruction (8 possibilities).
