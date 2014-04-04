@@ -354,13 +354,6 @@ class Translator
         "@R13",
         "M=D" # the address from symbol+index is now in R13
       ]
-    # when /^[0-9]*$/ # segment is address (will just be a numeric)
-    #   asm += [
-    #     "@#{symbol}",
-    #     "D=A", # the only difference for pointer and temp from all others
-    #     "@R13",
-    #     "M=D"
-    #   ]
     else
       asm += [
         "@#{symbol}",
