@@ -13,9 +13,12 @@ class Parser
   AND_COMMAND = 7
   OR_COMMAND = 8
   NOT_COMMAND = 9
+  PUSH_COMMAND = 10
+  POP_COMMAND = 11
 
   attr_reader :command
   attr_reader :index
+  attr_reader :vm_file
 
   def initialize(input_file=nil)
     if input_file
@@ -23,6 +26,7 @@ class Parser
     end
   end
 
+  # reinitizlizes state of parser
   def new_file(input_file)
     puts "Parsing new file '#{input_file.path}'"
     @vm_file = input_file
@@ -40,6 +44,11 @@ class Parser
     @instructions[@index]
   end
 
+  def reset!
+    @index = 0
+    @command = @instructions[@index]
+  end
+
   # Returns the current command's type
   def command_type
     return PUSH_CONST_COMMAND if @command[/^push\sconstant/]
@@ -52,13 +61,10 @@ class Parser
     return AND_COMMAND if @command[/^and$/]
     return OR_COMMAND if @command[/^or$/]
     return NOT_COMMAND if @command[/^not$/]
+    return PUSH_COMMAND if @command[/^push\s.*/]
+    return POP_COMMAND if @command[/^pop\s.*/]
 
     raise TranslatorParserException.new("Unrecognized command '#{@command}' at instruction #{@index+1}")
-  end
-
-  def reset!
-    @index = 0
-    @command = @instructions[@index]
   end
 
   # Reads the next command from the input and sets it as current command
@@ -69,9 +75,16 @@ class Parser
   end
 
   # This function should only be called if parser has declared the current
-  # command is a PUSH_CONST_COMMAND. <i>This function does not check</i>
-  def push_constant
+  # command is a PUSH_CONST_COMMAND, PUSH_COMMAND, or POP_COMMAND.
+  # <i>This function does not check if it is</i>
+  def cmd_index
     return @command[/(\d*)$/, 1]
   end
 
+  # This function should only be called if parser has declared the current
+  # command is a PUSH_CONST_COMMAND, PUSH_COMMAND, or POP_COMMAND.
+  # <i>This function does not check if it is</i>
+  def cmd_segment
+    return @command[/^.*\s(.*)\s/, 1]
+  end
 end

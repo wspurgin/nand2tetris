@@ -57,8 +57,8 @@ class Translator
   end
 
   def set_local_fun
-    asm_command = [
-      "@END",
+    asm = [
+      "@__END__",
       "0;JMP",
       "(__setTrue__)",
       "  @SP",
@@ -78,45 +78,46 @@ class Translator
       "  @continue",
       "  A=M",
       "  0;JMP",
-      "(END)"
+      "(__END__)"
     ]
-    for cmd in asm_command
-      @asm_file << cmd + "\n"
-      @total_commands += 1
-    end
+    write(asm)
     @total_commands -= 3 # for 3 labels
   end
 
   def translate_command
     if @parser.command_type == Parser::PUSH_CONST_COMMAND
-      translate_push_command(@parser.push_constant)
+      translate_push_const(@parser.cmd_index)
     elsif @parser.command_type == Parser::ADD_COMMAND
-      translate_add_command
+      translate_add
     elsif @parser.command_type == Parser::SUB_COMMAND
-      translate_sub_command
+      translate_sub
     elsif @parser.command_type == Parser::NEG_COMMAND
-      translate_neg_command
+      translate_neg
     elsif @parser.command_type == Parser::EQ_COMMAND
-      translate_eg_command
+      translate_eg
     elsif @parser.command_type == Parser::LT_COMMAND
-      translate_lt_command
+      translate_lt
     elsif @parser.command_type == Parser::GT_COMMAND
-      translate_gt_command
+      translate_gt
     elsif @parser.command_type == Parser::AND_COMMAND
-      translate_and_command
+      translate_and
     elsif @parser.command_type == Parser::OR_COMMAND
-      translate_or_command
+      translate_or
     elsif @parser.command_type == Parser::NOT_COMMAND
-      translate_not_command
+      translate_not
+    elsif @parser.command_type == Parser::PUSH_COMMAND
+      translate_push(@parser.cmd_segment, @parser.cmd_index)
+    elsif @parser.command_type == Parser::POP_COMMAND
+      translate_pop(@parser.cmd_segment, @parser.cmd_index)
     else
       puts "Couldn't translate '#{@parser.command}'"
     end
     @parser.advance  
   end
 
-  def translate_push_command(value)
-    asm_command = [
-      "@#{value}",
+  def translate_push_const(index)
+    asm = [
+      "@#{index}",
       "D=A",
       "@SP",
       "A=M",
@@ -124,14 +125,11 @@ class Translator
       "@SP",
       "M=M+1"
     ]
-    for cmd in asm_command
-      @asm_file << cmd + "\n"
-      @total_commands += 1
-    end
+    write(asm)
   end
 
-  def translate_add_command
-    asm_command = [
+  def translate_add
+    asm = [
       "@SP",
       "M=M-1",
       "A=M",
@@ -144,14 +142,11 @@ class Translator
       "@SP",
       "M=M+1"
     ]
-    for cmd in asm_command
-      @asm_file << cmd + "\n"
-      @total_commands += 1
-    end
+    write(asm)
   end
 
-  def translate_sub_command
-    asm_command = [
+  def translate_sub
+    asm = [
       "@SP",
       "M=M-1",
       "A=M",
@@ -164,26 +159,20 @@ class Translator
       "@SP",
       "M=M+1"
     ]
-    for cmd in asm_command
-      @asm_file << cmd + "\n"
-      @total_commands += 1
-    end
+    write(asm)
   end
 
-  def translate_neg_command
-    asm_command = [
+  def translate_neg
+    asm = [
       "@SP",
       "A=M-1",
       "M=-M"
     ]
-    for cmd in asm_command
-      @asm_file << cmd + "\n"
-      @total_commands += 1
-    end
+    write(asm)
   end
 
-  def translate_eg_command
-    asm_command = [
+  def translate_eg
+    asm = [
       "@#{@total_commands+17}",
       "D=A",
       "@continue",
@@ -202,14 +191,11 @@ class Translator
       "@__setFalse__",
       "D;JNE"
     ]
-    for cmd in asm_command
-      @asm_file << cmd + "\n"
-      @total_commands += 1
-    end
+    write(asm)
   end
 
-  def translate_lt_command
-    asm_command = [
+  def translate_lt
+    asm = [
       "@#{@total_commands+17}",
       "D=A",
       "@continue",
@@ -228,14 +214,11 @@ class Translator
       "@__setFalse__",
       "D;JLE"
     ]
-    for cmd in asm_command
-      @asm_file << cmd + "\n"
-      @total_commands += 1
-    end
+    write(asm)
   end
 
-  def translate_gt_command
-    asm_command = [
+  def translate_gt
+    asm = [
       "@#{@total_commands+17}",
       "D=A",
       "@continue",
@@ -254,14 +237,11 @@ class Translator
       "@__setFalse__",
       "D;JGE"
     ]
-    for cmd in asm_command
-      @asm_file << cmd + "\n"
-      @total_commands += 1
-    end
+    write(asm)
   end
 
-  def translate_and_command
-    asm_command = [
+  def translate_and
+    asm = [
       "@SP",
       "M=M-1",
       "A=M",
@@ -274,14 +254,11 @@ class Translator
       "@SP",
       "M=M+1"
     ]
-    for cmd in asm_command
-      @asm_file << cmd + "\n"
-      @total_commands += 1
-    end
+    write(asm)
   end
 
-  def translate_or_command
-    asm_command = [
+  def translate_or
+    asm = [
       "@SP",
       "M=M-1",
       "A=M",
@@ -294,19 +271,111 @@ class Translator
       "@SP",
       "M=M+1"
     ]
-    for cmd in asm_command
-      @asm_file << cmd + "\n"
-      @total_commands += 1
-    end
+    write(asm)
   end
 
-  def translate_not_command
-    asm_command = [
+  def translate_not
+    asm = [
       "@SP",
       "A=M-1",
       "M=!M"
     ]
-    for cmd in asm_command
+    write(asm)
+  end
+
+  def get_mem_symbol(segment, index)
+    symbol = nil
+    case segment
+    when "local"
+      symbol = "LCL"
+    when "argument"
+      symbol = "ARG"
+    when "this"
+      symbol = "THIS"
+    when "that"
+      symbol = "THAT"
+    when "temp"
+      symbol = "#{5+index.to_i}"
+    when "static", "pointer"
+      symbol = "#{File.basename(@parser.vm_file, '.vm')}.#{index}"
+    else
+      raise TranslatorException.new("Unrecognized memory segment '#{segment}' in push command")
+    end
+    return symbol
+  end
+
+  def translate_push(segment, index)
+    symbol = get_mem_symbol(segment, index)
+    asm = []
+    # Case statment for getting the proper value into D register
+    case symbol
+    when "LCL", "ARG", "THIS", "THAT"
+      asm += [
+        "@#{index}", # this first part is to get the proper value from memory
+        "D=A",
+        "@#{symbol}",
+        "A=D+M",
+        "D=M" # the value from symbol+index is now in D
+      ]
+    else
+      asm += [
+        "@#{symbol}",
+        "D=M"
+      ]
+    end
+    asm += [
+      "@SP",
+      "A=M",
+      "M=D", # push value from D onto stack
+      "@SP",
+      "M=M+1"
+    ]
+    write(asm)
+  end
+
+  def translate_pop(segment, index)
+    symbol = get_mem_symbol(segment, index)
+    asm = []
+    # Case statment for getting the proper address into R13
+    case symbol
+    when "LCL", "ARG", "THIS", "THAT"
+      asm += [
+        "@#{index}", # this first part is to get the proper memory address
+        "D=A",
+        "@#{symbol}",
+        "D=D+M",
+        "@R13",
+        "M=D" # the address from symbol+index is now in R13
+      ]
+    when /^[0-9]*$/ # segment is 'temp' address (will just be a numeric)
+      asm += [
+        "@#{symbol}",
+        "D=A", # the only difference between temp and all others
+        "@R13",
+        "M=D"
+      ]
+    else
+      asm += [
+        "@#{symbol}",
+        "D=M",
+        "@R13",
+        "M=D"
+      ]
+    end
+    # take address in R13 and pop from the stack to that address.
+    asm += [
+      "@SP",
+      "AM=M-1",
+      "D=M",
+      "@R13",
+      "A=M",
+      "M=D", # value from stack now at proper memory address
+    ]
+    write(asm)
+  end
+
+  def write(asm)
+    for cmd in asm
       @asm_file << cmd + "\n"
       @total_commands += 1
     end
