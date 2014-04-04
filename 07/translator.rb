@@ -296,7 +296,14 @@ class Translator
       symbol = "THAT"
     when "temp"
       symbol = "#{5+index.to_i}"
-    when "static", "pointer"
+    when "pointer"
+      if index == "0"
+        symbol = "3" # THIS
+      elsif index == "1"
+        symbol = "4" # THAT
+      end
+
+    when "static"
       symbol = "#{File.basename(@parser.vm_file, '.vm')}.#{index}"
     else
       raise TranslatorException.new("Unrecognized memory segment '#{segment}' in push command")
@@ -347,17 +354,17 @@ class Translator
         "@R13",
         "M=D" # the address from symbol+index is now in R13
       ]
-    when /^[0-9]*$/ # segment is 'temp' address (will just be a numeric)
-      asm += [
-        "@#{symbol}",
-        "D=A", # the only difference between temp and all others
-        "@R13",
-        "M=D"
-      ]
+    # when /^[0-9]*$/ # segment is address (will just be a numeric)
+    #   asm += [
+    #     "@#{symbol}",
+    #     "D=A", # the only difference for pointer and temp from all others
+    #     "@R13",
+    #     "M=D"
+    #   ]
     else
       asm += [
         "@#{symbol}",
-        "D=M",
+        "D=A",
         "@R13",
         "M=D"
       ]
