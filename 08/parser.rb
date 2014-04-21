@@ -52,7 +52,9 @@ class Parser
     return :LABEL_COMMAND if @command[/^label\s.*/]
     return :IF_GOTO_COMMAND if @command[/^if-goto\s.*/]
     return :GOTO_COMMAND if @command[/^goto\s.*/]
-    return :FUCNTION_COMMAND if @command[/^function\s.*/]
+    return :FUNCTION_COMMAND if @command[/^function\s.*/]
+    return :RETURN_COMMAND if @command[/^return$/]
+    return :CALL_COMMAND if @command[/call\s/]
 
     raise TranslatorParserException.new("Unrecognized command '#{@command}' at instruction #{@index+1}")
   end

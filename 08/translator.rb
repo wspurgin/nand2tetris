@@ -24,6 +24,8 @@ class Translator
     @path = "#{vm_path}/#{vm_basename}"
 
     get_files
+    # check for Sys.vm file, put it first (yay 1-liners)
+    @files.sort_by! { |f| [ File.basename(f) == "Sys.vm" ? 0 : 1, f ]}
     @files.each {|file| puts "#{file} will be translated into #{@asm_filename}"}
     @parser = Parser.new
     @asm_file = File.open(@asm_filename, "w")
@@ -46,14 +48,26 @@ class Translator
   end
 
   def translate!
+    set_main
     for file in @files
       File.open(file, "r") do |vm_file|
         @parser.new_file(vm_file)
         translate_command while @parser.has_more_commands?
-        set_local_fun
+        set_local_fun if file == @files.last
       end
     end
     puts "#{@asm_filename} created successfully"
+  end
+
+  def set_main
+    asm = [
+      "@256",
+      "D=A",
+      "@SP",
+      "M=D", # set SP to 0x0100
+    ]
+    write(asm)
+    translate_call("Sys.init", "0")
   end
 
   def set_local_fun
@@ -117,8 +131,11 @@ class Translator
     elsif command_type == :GOTO_COMMAND
       translate_goto(@parser.cmd_arg2)
     elsif command_type == :FUNCTION_COMMAND
-      # generate another label!
-      translate_label(@parser.cmd_arg2)
+      translate_function(@parser.cmd_arg2, @parser.cmd_index)
+    elsif command_type == :RETURN_COMMAND
+      translate_return
+    elsif command_type == :CALL_COMMAND
+      translate_call(@parser.cmd_arg2, @parser.cmd_index)
     else
       puts "Couldn't translate '#{@parser.command}'"
     end
@@ -409,6 +426,109 @@ class Translator
     write(asm)
   end
 
+  def translate_function(fun_name, num_locals)
+    translate_label(fun_name)
+    asm = []
+    num_locals.to_i.times do |i|
+      asm += [
+        "@SP",
+        "A=M",
+        "M=0",
+        "@SP",
+        "M=M+1"
+      ]
+    end
+    write(asm)
+  end
+
+  def translate_return
+    asm = [
+      "//return",
+      "@LCL",
+      "D=M",
+      "@R13",
+      "M=D",
+      "@5",
+      "A=D-A",
+      "D=M", # get return address
+      "@command",
+      "M=D", # store return address
+      "@SP",
+      "A=M-1",
+      "D=M", # store return value
+      "@ARG",
+      "A=M",
+      "M=D", # position return value
+      "@ARG",
+      "D=M+1", 
+      "@SP",
+      "M=D", # restore working stack
+    ]
+    # retore LCL, ARG, THIS, THAT
+    args = ["LCL", "ARG", "THIS", "THAT"]
+    i = 4
+    for a in args
+      asm += [
+        "@R13",
+        "D=M",
+        "@#{i}",
+        "A=D-A",
+        "D=M",
+        "@#{a}",
+        "M=D"
+      ]
+      i -= 1
+    end
+    asm += [
+      "@command",
+      "A=M",
+      "0;JMP" # jump to return address
+    ]
+    write(asm)
+    @total_commands -= 1 # for comment
+  end
+
+  def translate_call(fun_name, num_args)
+    asm = [
+      "//call #{fun_name + " " + num_args}",
+      "@#{@total_commands+47}",
+      "D=A",
+      "@SP",
+      "A=M",
+      "M=D", # push return address to stack
+      "@SP",
+      "M=M+1"
+    ]
+    args = ["LCL", "ARG", "THIS", "THAT"]
+    for a in args
+      asm += [
+        "@#{a}",
+        "D=M",
+        "@SP",
+        "A=M",
+        "M=D",
+        "@SP",
+        "M=M+1",
+      ]
+    end
+    asm += [
+      "@#{num_args.to_i+5}",
+      "D=A",
+      "@SP",
+      "D=M-D",
+      "@ARG",
+      "M=D",
+      "@SP",
+      "D=M",
+      "@LCL",
+      "M=D",
+      "@#{fun_name}",
+      "0;JMP"
+    ]
+    write(asm)
+    @total_commands -= 1 # for comment
+  end
+
   def write(asm)
     for cmd in asm
       @asm_file << cmd + "\n"
@@ -416,7 +536,6 @@ class Translator
     end
   end
 end
-
 
 puts "Translator"
 
